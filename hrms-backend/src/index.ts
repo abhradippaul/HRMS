@@ -1,13 +1,13 @@
 import { serve } from "@hono/node-server";
 import { Hono } from "hono";
 import { config } from "dotenv";
-import user from "./controllers/user.controllers";
+import user from "./controllers/employee.controllers";
 
 config();
 const port = process.env.PORT!;
 
 const app = new Hono().basePath("/api/v1");
-const route = app.route("/user", user);
+const route = app.route("/employee", user);
 
 serve({
   fetch: app.fetch,
