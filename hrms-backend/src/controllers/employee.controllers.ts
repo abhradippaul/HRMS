@@ -1,13 +1,29 @@
 import { Hono } from "hono";
-import { employees, insertEmployeeSchema } from "../db/schema";
+import {
+  departments,
+  employees,
+  insertEmployeeSchema,
+  // insertReportingManagersSchema,
+  // reporting_managers,
+} from "../db/schema";
 import { db } from "../db/db";
 import { zValidator } from "@hono/zod-validator";
 import { v4 } from "uuid";
+import { eq, sql } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
 
 const app = new Hono()
   .get("/", async (c) => {
-    // db.insert(employees).values({})
-    return c.text("Hello Node.js from user!");
+    const managers = alias(employees, "managers");
+    const data = await db
+      .select()
+      .from(employees)
+      .leftJoin(managers, eq(employees.manager_id, managers.id))
+      .leftJoin(departments, eq(departments.id, employees.department_id));
+    return c.json({
+      message: "Hello Node.js from user!",
+      data,
+    });
   })
   .post(
     "/",
@@ -15,12 +31,13 @@ const app = new Hono()
       "json",
       insertEmployeeSchema.omit({
         id: true,
-        timestamp: true,
+        // timestamp: true,
       })
     ),
     async (c) => {
-      const { name, emp_id, age, date_of_birth } = c.req.valid("json");
-      if (!name || !emp_id) {
+      const { first_name, last_name, manager_id, department_id } =
+        c.req.valid("json");
+      if (!first_name || !last_name) {
         return c.json(
           {
             message: "Credentials are required",
@@ -30,10 +47,10 @@ const app = new Hono()
       }
       const response = await db.insert(employees).values({
         id: v4(),
-        name,
-        emp_id,
-        age,
-        date_of_birth,
+        first_name,
+        last_name,
+        manager_id,
+        department_id,
       });
       console.log(response);
       return c.json({
@@ -41,5 +58,35 @@ const app = new Hono()
       });
     }
   );
+// .post(
+//   "/manager",
+//   zValidator(
+//     "json",
+//     insertReportingManagersSchema.omit({
+//       id: true,
+//       timestamp: true,
+//     })
+//   ),
+//   async (c) => {
+//     const { employee, manager } = c.req.valid("json");
+//     if (!employee || !manager) {
+//       return c.json(
+//         {
+//           message: "Employee ID and Manager ID are required",
+//         },
+//         { status: 401 }
+//       );
+//     }
+//     const response = await db.insert(reporting_managers).values({
+//       id: v4(),
+//       employee,
+//       manager,
+//     });
+//     console.log(response);
+//     return c.json({
+//       message: "Reporting manager created successfully",
+//     });
+//   }
+// );
 
 export default app;
